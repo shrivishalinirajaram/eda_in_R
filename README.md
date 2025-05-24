@@ -93,7 +93,7 @@ ebola_eda_project/
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/ebola_eda_project.git
+   git clone https://github.com/shrivishalinirajaram/eda_in_R.git
    ```
 2. Open the RStudio project: eda_in_R.Rproj
 3. In your `R Console`
