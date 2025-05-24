@@ -1,0 +1,1010 @@
+---
+title: "Patient-Level Predictors of Ebola Outcome"
+subtitle: "Descriptive Exploration of the 2014–2015 Simulated Outbreak"
+author: "Shri Vishalini Rajaram"
+date: "May 12, 2025"
+format:
+  revealjs:
+    theme: [simple, custom.scss]
+    slide-number: true
+    transition: slide
+    transition-speed: fast
+    center-title-slide: true
+    fig-dpi: 600
+    toc: false # Made custom TOC
+    width: 1200
+    height: 800
+    footer: "BIOS:4510 - Spring 2025 | Ebola Outbreak Project"
+    highlight-style: github
+    progress: true
+    embed-resources: true
+execute:
+  echo: false
+  message: false
+  warning: false
+---
+
+```{r setup, echo=FALSE, include=FALSE, warning=FALSE, message=FALSE}
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(lubridate)
+library(gt)
+library(forcats)
+library(viridis)
+library(scales)
+library(webshot2)
+```
+
+```{r read_tidy_file, echo=FALSE, include=FALSE, warning=FALSE, message=FALSE}
+# Reading the tidy file
+ebola <- read_csv("data/ebola_combined.csv")
+```
+
+::: toc-bar
+
+<div>
+[-Background]{.active}<br>
+-Patient Demographics<br>
+-Clinical Milestones<br>
+-Symptoms<br>
+-Viral Load<br>
+-Multi Comparisons<br>
+-Summary<br>
+</div>
+
+::: toc-right
+Why Study Ebola Outcomes?
+:::
+:::
+
+### **Background**
+
+-   Ebola virus disease (EVD) is a severe, often fatal illness caused by the Ebola virus.
+-   With rapid clinical progression and high mortality, early detection and care may improve survival - yet detailed patterns remain unclear.
+
+#### **Dataset Summary**
+
+After pre-processing the dataset, we evaluated **`r nrow(ebola)`** patients and **`r ncol(ebola)`** predictors between **May 2014 and April 2015**.
+
+```{r table1_Variables, echo=FALSE}
+variable_table <- tribble(
+  ~Category, ~Notes,
+  "Patient Demographics", 
+    "Includes physical traits and hospital, which reflects treatment context.",
+  "Clinical Milestones", 
+    "Captures key dates and durations across the illness course.",
+  "Symptom Presentation", 
+    "Derived from `symptoms` column using string matching; totals as `n_symptoms`.",
+  "Viral Load", 
+    "Lower CT = higher viral load.",
+  "Clinical Outcome (Target)", 
+    "Recovery status of the patient: Recover, Death, or Unknown."
+)
+```
+
+
+```{r table1, echo=FALSE}
+variable_table |>
+  gt() |>
+  tab_header(
+    title = md("**Table 1. Variable classification used in the analysis of Ebola outbreak patient data.**")
+    ) |>
+  cols_label(
+    Category = "Variable Category",
+    Notes = "Description"
+  ) |>
+  fmt_markdown(columns = everything()) |>
+  cols_align(align = "center", columns = everything()) |>
+  tab_options(
+    table.font.size = px(18),
+    table.font.names = "Segoe UI, Arial",
+    table.width = pct(100),
+    column_labels.font.weight = "bold",
+    column_labels.background.color = "#f5f5f5",
+    column_labels.border.bottom.color = "#ccc",
+    column_labels.border.bottom.width = px(1),
+    table.border.top.color = "#ddd",
+    table.border.bottom.color = "#ddd",
+    heading.title.font.size = px(24),
+    row.striping.background_color = "#fbfbfb",
+    row.striping.include_table_body = TRUE,
+    data_row.padding = px(15),
+    table.align = "left",
+    row_group.padding = px(0),  
+    heading.padding = px(0)
+  ) |>
+  opt_table_outline(style = "solid", color = "#ccc", width = px(1))
+```
+
+------------------------------------------------------------------------
+
+::: toc-bar
+<div>
+
+[- Background]{.active}<br> - Patient Demographics<br> - Clinical Milestones<br> - Symptoms<br> - Viral Load<br> - Multi Comparisons<br> - Summary<br> - Evaluation<br>
+
+</div>
+
+::: toc-right
+Research question
+:::
+:::
+
+::: research-question
+**Does the temporal changes of clinical milestones, symptom presentation, viral load, and patient demographics influence the clinical outcome of Ebola virus disease during the outbreak?**
+:::
+
+------------------------------------------------------------------------
+
+::: toc-bar
+<div>
+
+-Background<br> [ -Patient Demographics]{.active}<br> -Clinical Milestones<br> -Symptoms<br> -Viral Load<br> -Multi Comparisons<br> -Summary<br>
+
+</div>
+
+::: toc-right
+Distribution
+:::
+
+:::
+
+
+##### **How are patient demographics and clinical characteristics distributed?**
+
+::: {.cell layout-ncol="5"}
+```{r hist-age-year, fig.width=3, fig.height=3, dpi=600, warning=FALSE}
+#-----------------------Cleaned Age in Years------------------------
+ggplot(ebola, aes(x = age_year)) +
+  geom_histogram(binwidth = 5, fill = viridis(1), color = "white") +
+  labs(title = "Distribution of Patient Age (years)", x = "Age (years)", y = "Count") +
+  theme_classic(base_size = 8) + 
+  annotate("text", x = -Inf, y = Inf, label = "A", hjust = 0.0, vjust = 1.0, size = 4, fontface = "bold")
+```
+
+```{r bar-age-cat, fig.width=3, fig.height=3, dpi=600, warning=FALSE}
+#-----------------------Cleaned Age as Categorical Variable---------
+ggplot(ebola, aes(x = age_cat, fill = age_cat)) +
+  geom_bar() +
+  geom_text(stat = "count", aes(label = after_stat(count)), vjust = 0) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) + 
+  scale_fill_viridis_d() +
+  labs(title = "Patient Age Category Distribution", x = "Age Group", y = "Count") +
+  theme_classic(base_size = 8) + theme(legend.position = "none") + 
+  annotate("text", x = -Inf, y = Inf, label = "B", hjust = 0.0, vjust = 1.0, size = 4, fontface = "bold")
+```
+
+```{r bar-gender-clean, fig.width=3, fig.height=3, dpi=600, warning=FALSE}
+#-----------------------Cleaned Gender-----------------------------
+ggplot(ebola, aes(x = gender_clean, fill = gender_clean)) +
+  geom_bar() +
+  geom_text(stat = "count", aes(label = after_stat(count)), vjust = 0) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) + 
+  scale_fill_viridis_d() +
+  labs(title = "Gender Distribution of Patients", x = "Gender", y = "Count") +
+  theme_classic(base_size = 8) + theme(legend.position = "none") + 
+  annotate("text", x = -Inf, y = Inf, label = "C", hjust = 0.0, vjust = 1.0, size = 4, fontface = "bold")
+```
+
+```{r bar-source, fig.width=3, fig.height=3, dpi=600, warning=FALSE}
+#-----------------------Source-------------------------------------
+ggplot(ebola, aes(x = source, fill = source)) +
+  geom_bar() +
+  geom_text(stat = "count", aes(label = after_stat(count)), vjust = 0) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) + 
+  scale_fill_viridis_d() +
+  labs(title = "Reported Infection Source", x = "Source", y = "Count") +
+  theme_classic(base_size = 8) + theme(legend.position = "none") + 
+  annotate("text", x = -Inf, y = Inf, label = "D", hjust = 0.0, vjust = 1.0, size = 4, fontface = "bold")
+```
+
+```{r hist-weight-lb, fig.width=3, fig.height=3, dpi=600, warning=FALSE}
+#-----------------------Weight (in Pounds)-------------------------
+ggplot(ebola, aes(x = weight_lb)) +
+  geom_histogram(binwidth = 10, fill = viridis(1), color = "white") +
+  labs(title = "Distribution of Patient Weight (lb)", x = "Weight (lb)", y = "Count") +
+  theme_classic(base_size = 8) + 
+  annotate("text", x = -Inf, y = Inf, label = "E", hjust = 0.0, vjust = 1.0, size = 4, fontface = "bold")
+```
+
+```{r hist-height-ft, fig.width=3, fig.height=3, dpi=600, warning=FALSE}
+#-----------------------Height (in Feet)---------------------------
+ggplot(ebola, aes(x = height_ft)) +
+  geom_histogram(binwidth = 0.25, fill = viridis(1), color = "white") +
+  labs(title = "Distribution of Patient Height (ft)", x = "Height (ft)", y = "Count") +
+  theme_classic(base_size = 8) + 
+  annotate("text", x = -Inf, y = Inf, label = "F", hjust = 0.0, vjust = 1.0, size = 4, fontface = "bold")
+```
+
+```{r hist-temp-f, fig.width=3, fig.height=3, dpi=600, warning=FALSE}
+#-----------------------Temperature (in Fahrenheit)-----------------
+ggplot(ebola, aes(x = temp_f)) +
+  geom_histogram(binwidth = 1, fill = viridis(1), color = "white") +
+  labs(title = "Distribution of Body Temperature (F)", x = "Temperature (F)", y = "Count") +
+  theme_classic(base_size = 8) + 
+  annotate("text", x = -Inf, y = Inf, label = "G", hjust = 0.0, vjust = 1.0, size = 4, fontface = "bold")
+```
+
+```{r bar-hospital, fig.width=3., fig.height=3, dpi=600, warning=FALSE}
+#-----------------------Hospital Name-------------------------------
+ggplot(ebola |> filter(!is.na(name)), aes(x = fct_infreq(name), fill = name)) +
+  geom_bar() +
+  geom_text(stat = "count", aes(label = after_stat(count)), vjust = 0) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) + 
+  scale_fill_viridis_d(option = "D") +
+  labs(title = "Hospital Representation in Dataset", x = "Hospital", y = "Patient Count") +
+  theme_classic(base_size = 8) + 
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 30, hjust = 1)) + 
+  annotate("text", x = -Inf, y = Inf, label = "H", hjust = 0.0, vjust = 1.0, size = 4, fontface = "bold")
+```
+:::
+
+**A–B**: Most patients were under 20; age distribution is right-skewed; **C**: Gender distribution was nearly equal among known cases; **D**: Many infection sources were unspecified ("`other`"); **E–F**: Most weights: 100–130 lb; most heights: 4.5–5.5 ft; **G**: Typical body temperature: 100–102°F; **H**: Port Hospital had the highest patient count.
+
+------------------------------------------------------------------------
+
+::: toc-bar
+<div>
+
+-Background<br> [ -Patient Demographics]{.active}<br> -Clinical Milestones<br> -Symptoms<br> -Viral Load<br> -Multi Comparisons<br> -Summary<br>
+
+</div>
+
+::: toc-right
+Relationships
+:::
+
+:::
+
+#####  **How does demographical changes affect outcome?**
+
+::: {.columns}
+
+::: {.column width="50%"}
+
+
+```{r age_outcome, fig.width=4, fig.height=3, dpi=600, warning=FALSE}
+ebola |>
+  filter(!is.na(age_cat), !is.na(outcome)) |>
+  count(age_cat, outcome) |>
+  group_by(age_cat) |>
+  mutate(prop = n / sum(n)) |>
+  ggplot(aes(x = age_cat, y = prop, fill = outcome)) +
+  geom_col(position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_viridis_d() +
+  labs(x = "Age Group", y = "Proportion") +
+  theme_classic(base_size = 7) +
+  theme(legend.position = "bottom")
+```
+
+:::
+
+::: {.column width="50%"}
+
+```{r hosp_outcome, fig.width=4, fig.height=3, dpi=600, warning=FALSE}
+ebola |>
+  filter(!is.na(name), !is.na(outcome)) |>
+  count(name, outcome) |>
+  ggplot(aes(x = outcome, y = fct_rev(fct_infreq(name)), fill = n)) +
+  geom_tile(color = "white") +
+  scale_fill_viridis_c(option = "D") +
+  labs(x = "Outcome", y = "Hospital", fill = "Count") +
+  theme_classic(base_size = 7) +
+  theme(legend.position = "bottom")
+```
+
+:::
+
+:::
+
+**Left** Recovery and death proportions remain relatively stable from ages 0–49, but the 50–69 group shows a visible increase in recovery and slight decline in death proportion.
+
+**Right** Port Hospital handled the highest number of patients across all outcomes, especially deaths, suggesting it served as a major treatment center. 
+
+
+-------------
+
+
+::: toc-bar
+<div>
+
+-Background<br> [ -Patient Demographics]{.active}<br> -Clinical Milestones<br> -Symptoms<br> -Viral Load<br> -Multi Comparisons<br> -Summary<br>
+
+</div>
+
+::: toc-right
+Relationships
+:::
+
+:::
+
+##### **Do overweight patients have higher risk of disease?**
+
+
+```{r weight_age_outcome, fig.width=8, fig.height=3, dpi=600, warning=FALSE}
+ebola |> 
+  ggplot(aes(x = age_cat, y = weight_lb, fill = outcome)) +
+  geom_violin(alpha = 0.6, position = position_dodge(width = 0.8)) +
+  labs(x = "Age Category", y = "Weight (lb)", title = "Weight by Age Group and Outcome") +
+  theme_classic(base_size = 7)
+```
+
+
+Weight increases with age as expected, but within each age group, clinical outcomes are not clearly separated by weight. 
+
+
+-----------
+
+
+::: toc-bar
+<div>
+-Background<br>
+-Patient Demographics<br>
+[-Clinical Milestones]{.active}<br>
+-Symptoms<br>
+-Viral Load<br>
+-Multi Comparisons<br>
+-Summary<br>
+
+</div>
+
+::: toc-right
+Distribution
+:::
+:::
+
+##### **Are there any patterns in the distribution of the clinical milestones?**
+
+```{r days-to-outcome, fig.height=3, fig.width=6, dpi=600, warning=FALSE}
+#-----------------------Days to Outcome---------------------------
+# Prepare data in long format
+days_long <- ebola |> 
+  select(days_onset_to_outcome, days_infection_to_outcome, days_hospitalisation_to_outcome) |> 
+  pivot_longer(
+    cols = everything(),
+    names_to = "event",
+    values_to = "days"
+  ) |>
+  mutate(
+    event = case_when(
+      event == "days_onset_to_outcome" ~ "Symptom Onset",
+      event == "days_infection_to_outcome" ~ "Infection",
+      event == "days_hospitalisation_to_outcome" ~ "Hospitalisation"
+    ),
+    event = factor(event, levels = c("Infection", "Symptom Onset", "Hospitalisation"))
+  )
+
+# Plot
+ggplot(days_long, aes(x = days)) +
+  geom_histogram(binwidth = 2, fill = viridis(1), color = "white") +
+  facet_wrap(
+    ~ event, 
+    scales = "free_y",
+    labeller = labeller(event = c(
+      "Infection" = "A. Infection",
+      "Symptom Onset" = "B. Symptom Onset",
+      "Hospitalisation" = "C. Hospitalisation"
+    ))
+  ) +
+  labs(
+    x = "Days to Outcome", y = "Patient Count"
+  ) +
+  theme_classic(base_size = 10)
+```
+
+**Panels A–C** show histograms of days between clinical events (A: infection, B: symptom onset, C: hospitalisation) and outcome. 
+
+----------------
+
+::: toc-bar
+<div>
+-Background<br>
+-Patient Demographics<br>
+[-Clinical Milestones]{.active}<br>
+-Symptoms<br>
+-Viral Load<br>
+-Multi Comparisons<br>
+-Summary<br>
+
+</div>
+
+::: toc-right
+Distribution
+:::
+:::
+
+##### **When was the peak time of the epidemic during 2014-2015 outbreak?**
+
+```{r total-dates, fig.width=4, fig.height=2, dpi=600, warning=FALSE}
+#-----------------------Time Trend of events (Month)-------------------------
+# Count events per month
+event_counts <- bind_rows(
+  ebola |> filter(!is.na(month_onset)) |> count(month = month_onset) |> mutate(event = "Symptom Onset"),
+  ebola |> filter(!is.na(month_infection)) |> count(month = month_infection) |> mutate(event = "Infection"),
+  ebola |> filter(!is.na(month_hospitalisation)) |> count(month = month_hospitalisation) |> mutate(event = "Hospitalisation")
+)
+
+# Plot monthly counts
+ggplot(event_counts, aes(x = month, y = n, color = event)) +
+  geom_line(linewidth = 0.7) +
+  geom_point(size = 0.7) +
+  scale_color_viridis_d() +
+  labs(
+    x = "Month", y = "Number of Cases", color = "Event"
+  ) +
+  theme_classic(base_size = 7)
+```
+
+
+Monthly counts of cases for infection, symptom onset, and hospitalisation events. Negative values in A–C reflect likely data entry errors or same-day events.
+
+------------------------------------------------------------------------
+
+::: toc-bar
+<div>
+-Background<br>
+-Patient Demographics<br>
+[-Clinical Milestones]{.active}<br>
+-Symptoms<br>
+-Viral Load<br>
+-Multi Comparisons<br>
+-Summary<br>
+
+</div>
+
+::: toc-right
+Relationships
+:::
+:::
+
+##### **How did the hospitals adapt to the situation? Were there delays in treatment?**
+
+::: {.columns}
+
+::: {.column width="70%"}
+
+```{r system_adaptation, fig.width=8, fig.height=6, dpi=600, warning=FALSE}
+ebola |>
+  filter(!is.na(name), !is.na(month_hospitalisation), !is.na(days_hospitalisation_to_outcome)) |>
+  mutate(
+    month_label = fct_inorder(format(ymd(month_hospitalisation), "%b %Y"))
+  ) |>
+  group_by(name, month_label, outcome) |>
+  summarise(
+    median_days = median(days_hospitalisation_to_outcome, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  ggplot(aes(x = month_label, y = median_days, group = outcome, color = outcome)) +
+  geom_line(linewidth = 0.6) +
+  geom_point(size = 1) +
+  facet_wrap(~ name, ncol = 2) +
+  scale_color_viridis_d() +
+  labs(
+    title = "Median Hospitalisation-to-Outcome Time by Month, Outcome, and Hospital",
+    x = "Month", y = "Median Days", color = "Outcome"
+  ) +
+  theme_classic(base_size = 8) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+:::
+
+::: {.column width="30%"}
+
+- `Military` and `Port Hospitals` show **stable and stratified patterns**, indicating organized clinical pathways by outcome.
+- `St. Mark’s` and “`Other`” facilities exhibit **greater month-to-month variation**, suggesting either fewer cases or evolving protocols.
+- There is **no strong evidence** of systemic delay over time - rather, median durations remained stable or improved.
+
+:::
+
+:::
+
+------------
+
+::: toc-bar
+<div>
+-Background<br>
+-Patient Demographics<br>
+[-Clinical Milestones]{.active}<br>
+-Symptoms<br>
+-Viral Load<br>
+-Multi Comparisons<br>
+-Summary<br>
+
+</div>
+
+::: toc-right
+Relationships
+:::
+:::
+
+
+##### **Did clinical milestones vary among different age groups in turn affecting outcome?**
+
+::: {.columns}
+
+::: {.column width=70%}
+
+```{r age_milestone_outcome, fig.width=8, fig.height=6, dpi=600, warning=FALSE}
+# Prepare data
+timing_age <- ebola |>
+  select(age_cat, outcome, starts_with("days_")) |>
+  pivot_longer(cols = starts_with("days_"), names_to = "event", values_to = "days") |>
+  mutate(
+    event = recode(event,
+      "days_infection_to_outcome" = "Infection",
+      "days_onset_to_outcome" = "Symptom Onset",
+      "days_hospitalisation_to_outcome" = "Hospitalisation"
+    )
+  )
+
+# Plot
+ggplot(timing_age, aes(x = age_cat, y = days, fill = outcome)) +
+  geom_boxplot(outlier.size = 0.5) +
+  facet_wrap(~ event) +
+  scale_fill_viridis_d() +
+  labs(x = "Age Category", y = "Days to Outcome") +
+  coord_flip() + 
+  theme_classic(base_size = 10)
+```
+
+:::
+
+::: {.column width=30%}
+
+- **Shorter time-to-outcome for deaths** across all ages likely reflects severe presentations or delayed hospitalisation.
+- **Longer recovery durations** in older patients suggest sustained treatment efforts.
+- Variation in milestone intervals by age implies that **age modified the timing of clinical trajectory**, thereby influencing the likelihood of recovery or death.
+
+:::
+
+:::
+
+---------------
+
+::: toc-bar
+<div>
+-Background<br>
+-Patient Demographics<br>
+[-Clinical Milestones]{.active}<br>
+-Symptoms<br>
+-Viral Load<br>
+-Multi Comparisons<br>
+-Summary<br>
+
+</div>
+
+::: toc-right
+Relationships
+:::
+:::
+
+
+
+```{r gt_delay_pattern, warning=FALSE}
+ebola |>
+  filter(!is.na(name), !is.na(outcome)) |>
+  group_by(name, outcome) |>
+  summarise(
+    Infection = paste0(round(mean(days_infection_to_outcome, na.rm = TRUE), 1), 
+                       " ± ", round(sd(days_infection_to_outcome, na.rm = TRUE), 1)),
+    Onset = paste0(round(mean(days_onset_to_outcome, na.rm = TRUE), 1), 
+                   " ± ", round(sd(days_onset_to_outcome, na.rm = TRUE), 1)),
+    Hospitalisation = paste0(round(mean(days_hospitalisation_to_outcome, na.rm = TRUE), 1), 
+                             " ± ", round(sd(days_hospitalisation_to_outcome, na.rm = TRUE), 1)),
+    .groups = "drop"
+  ) |>
+  arrange(desc(name)) |>
+  gt(groupname_col = "name") |>
+  tab_header(
+    title = md("**Average Time from Clinical Events to Outcome by Hospital and Outcome**")
+  ) |>
+  cols_label(
+    name = "",
+    outcome = "",
+    Infection = "Infection to Outcome",
+    Onset = "Onset to Outcome",
+    Hospitalisation = "Hospitalisation to Outcome"
+  ) |>
+  tab_options(
+    row_group.as_column = FALSE,
+    row_group.font.weight = "bold",
+    row_group.background.color = "#f5f5f5",
+    table.font.size = px(14)
+  )
+```
+
+------------------
+
+
+::: toc-bar
+<div>
+
+-Background<br> -Patient Demographics<br> -Clinical Milestones<br> [-Symptoms]{.active}<br> -Viral Load<br> -Multi Comparisons<br> -Summary<br>
+
+</div>
+
+::: toc-right
+Distribution
+:::
+:::
+
+##### **Which was the highest recorded symptom among the patients?**
+
+
+```{r symptom-indicator-bars, fig.width=4, fig.height=2, dpi=600, warning=FALSE}
+#-----------------------Symptom Indicators-------------------------
+symptom_vars <- c("symptom_fever", "symptom_cough", "symptom_vomit", "symptom_chills", "symptom_aches", "symptom_none")
+
+indicator_counts <- ebola |> 
+  select(all_of(symptom_vars)) |> 
+  pivot_longer(cols = everything(), names_to = "symptom", values_to = "present") |> 
+  filter(!is.na(present)) |> 
+  count(symptom, present)
+
+symptom_labels <- c(
+  symptom_aches = "A. Aches",
+  symptom_chills = "B. Chills",
+  symptom_cough = "C. Cough",
+  symptom_fever = "D. Fever",
+  symptom_none = "E. No Symptoms",
+  symptom_vomit = "F. Vomit"
+)
+
+ggplot(indicator_counts, aes(x = as.factor(present), y = n, fill = as.factor(present))) +
+  geom_col(width = 0.2) +
+  geom_text(aes(label = n), vjust = 0, size = 0.8) +
+  facet_wrap(~ symptom, scales = "free_y", labeller = as_labeller(symptom_labels)) +
+  scale_fill_viridis_d() +
+  labs(x = "Reported", y = "Count") +
+  theme_classic(base_size = 9) +
+  theme(legend.position = "none",
+        strip.text = element_text(size = 4),
+        axis.text = element_text(size = 3),
+        axis.title = element_text(size = 4))
+```
+
+**Panels A–F** show binary indicator counts for individual symptoms: fever, cough, vomiting, chills, aches, and absence of symptoms (“no symptoms”).
+
+-------------------------
+
+::: toc-bar
+<div>
+
+-Background<br> -Patient Demographics<br> -Clinical Milestones<br> [-Symptoms]{.active}<br> [-Viral Load]{.active}<br> -Multi Comparisons<br> -Summary<br>
+
+</div>
+
+::: toc-right
+Distribution
+:::
+:::
+
+
+::: {.cell layout-ncol=2}
+
+##### **How many symptoms were commonly reported?**
+
+```{r hist-n-symptoms, fig.width=1, fig.height=1, dpi=600, warning=FALSE}
+#-----------------------Number of Symptoms-------------------------
+ggplot(ebola, aes(x = n_symptoms)) +
+  geom_bar(fill = viridis(1)) +
+  labs(x = "Symptom Count", y = "Count") +
+  theme_classic(base_size = 4)
+```
+
+##### **Where there any left skewness with the viral load depicting higher disease?**
+
+```{r hist-ct-blood, fig.height=1, fig.width=1, dpi=600, warning=FALSE, fig.align='center'}
+#-----------------------CT_Blood (PCR)-------------------------
+ggplot(ebola, aes(x = ct_blood)) +
+  geom_histogram(binwidth = 1, fill = viridis(1), color = "white") +
+  labs(x = "CT Blood", y = "Count") +
+  theme_classic(base_size = 4)
+```
+
+:::
+
+------------------------------------------------------------------------
+
+::: toc-bar
+<div>
+
+-Background<br> -Patient Demographics<br> -Clinical Milestones<br> -Symptoms<br> -Viral Load<br> [-Multi Comparisons]{.active}<br> -Summary<br>
+
+</div>
+
+::: toc-right
+Distribution
+:::
+:::
+
+##### **Were there any combination of symptoms prevalent in particular outcome?**
+
+::: {.columns}
+
+::: {.column width=70%}
+
+
+```{r symptoms_combo_outcome, fig.height=4, fig.width=6, dpi=600, warning=FALSE}
+ebola_symptoms_combo <- ebola |>
+  mutate(
+    symptom_combo = case_when(
+      symptom_fever == 1 & symptom_cough == 1 & symptom_vomit == 1 ~ "Fever+Cough+Vomit",
+      symptom_fever == 1 & symptom_vomit == 1 ~ "Fever+Vomit",
+      symptom_fever == 1 & symptom_cough == 1 ~ "Fever+Cough",
+      symptom_vomit == 1 & symptom_cough == 1 ~ "Vomit+Cough",
+      TRUE ~ "Other"
+    ))
+
+ebola_symptoms_combo |> 
+  count(symptom_combo, outcome) |>
+  ggplot(aes(x = symptom_combo, y = n, fill = outcome)) +
+  geom_col(position = position_dodge(width = 0.8)) +
+  geom_text(aes(label = n), 
+            position = position_dodge(width = 0.8), 
+            vjust = -0.3, size = 3) +
+  scale_fill_viridis_d() +
+  labs(title = "Outcome by Symptom Combination", x = "Symptom Combo", y = "Count") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+:::
+
+:::{.column width=30%}
+
+Most patients with **`Fever+Cough`** or **`Fever+Cough+Vomit`** had a known outcome, with Death being the most frequent outcome in both combinations. 
+
+:::
+
+:::
+
+----------
+
+::: toc-bar
+<div>
+
+-Background<br> -Patient Demographics<br> -Clinical Milestones<br> -Symptoms<br> -Viral Load<br> [-Multi Comparisons]{.active}<br> -Summary<br>
+
+</div>
+
+::: toc-right
+Distribution
+:::
+:::
+
+##### **Does the combination of reported symptoms and age category influence the clinical outcome?**
+
+::: {.columns}
+
+::: {.column width=70%}
+
+
+```{r symptoms_age_outcome, fig.height=4, fig.width=6, dpi=600, warning=FALSE}
+ebola_symptoms_combo |>
+  filter(symptom_combo != "Other", !is.na(age_cat), !is.na(outcome)) |>
+  count(symptom_combo, age_cat, outcome) |>
+  group_by(symptom_combo, age_cat) |>
+  mutate(prop = n / sum(n)) |>
+  ggplot(aes(x = age_cat, y = prop, fill = outcome)) +
+  geom_col(position = "fill") +
+  facet_wrap(~ symptom_combo) +
+  scale_fill_viridis_d() +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    title = "Outcome Distribution by Symptom Combination and Age Category",
+    x = "Age Category", y = "Proportion"
+  ) +
+  theme_classic(base_size = 8) +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+:::
+
+::: {.column width=30%}
+
+- For **`Fever+Cough`**, younger age groups (`<30`) consistently show higher recovery proportions, while older age groups have slightly increased death rates.
+
+- In **`Fever+Vomit`** and **`Vomit+Cough`**, recovery rates drop noticeably in middle-aged and older adults, with a corresponding rise in deaths, especially in the `50–69` group.
+
+:::
+
+:::
+
+
+-------------
+
+::: toc-bar
+<div>
+
+-Background<br> -Patient Demographics<br> -Clinical Milestones<br> -Symptoms<br> -Viral Load<br> [-Multi Comparisons]{.active}<br> -Summary<br>
+
+</div>
+
+::: toc-right
+Risk profile
+:::
+:::
+
+##### **Can we find a risk profile for the children?**
+
+
+```{r risk_profile, dpi=600, warning=FALSE} 
+# ---- Age 0–9 group summaries ----
+ebola_0_9 <- ebola |> filter(age_cat == "0-9", outcome %in% c("Death", "Recover"))
+combo_0_9 <- ebola_symptoms_combo |> filter(age_cat == "0-9", outcome %in% c("Death", "Recover"))
+
+top_combo_0_9 <- combo_0_9 |>
+  filter(symptom_combo != "Other") |>
+  count(outcome, symptom_combo) |>
+  group_by(outcome) |>
+  mutate(pct = n / sum(n)) |>
+  slice_max(n, n = 1, with_ties = FALSE) |>
+  mutate(`Top Symptom Combo` = paste0(symptom_combo, " (", round(pct * 100, 1), "%)")) |>
+  select(outcome, `Top Symptom Combo`)
+
+summary_0_9 <- ebola_0_9 |>
+  group_by(outcome) |>
+  summarise(
+    `CT` = round(mean(ct_blood < 21, na.rm = TRUE) * 100, 1),
+    `Weight` = round(mean(weight_lb > 80, na.rm = TRUE) * 100, 1),
+    `Infection to Outcome` = paste0(median(days_infection_to_outcome, na.rm = TRUE),
+                                    " (", quantile(days_infection_to_outcome, 0.25, na.rm = TRUE),
+                                    "–", quantile(days_infection_to_outcome, 0.75, na.rm = TRUE), ")"
+                                    ),
+    `Onset to Outcome` = paste0(median(days_onset_to_outcome, na.rm = TRUE),
+                                " (", quantile(days_onset_to_outcome, 0.25, na.rm = TRUE),
+                                "–", quantile(days_onset_to_outcome, 0.75, na.rm = TRUE), ")"
+                                ),
+    `Hospitalisation to Outcome` = paste0(median(days_hospitalisation_to_outcome, na.rm = TRUE),
+                                          " (", quantile(days_hospitalisation_to_outcome, 0.25, na.rm = TRUE),
+                                          "–", quantile(days_hospitalisation_to_outcome, 0.75, na.rm = TRUE), ")"
+                                          ),
+    `Top Hospital` = name |> na.omit() |> fct_infreq() |> as.character() |> first(),
+    .groups = "drop"
+  )
+
+final_0_9 <- left_join(top_combo_0_9, summary_0_9, by = "outcome") |> mutate(age_group = "0-9")
+
+# ---- Age 10–19 group summaries ----
+ebola_10_19 <- ebola |> filter(age_cat == "10-19", outcome %in% c("Death", "Recover"))
+combo_10_19 <- ebola_symptoms_combo |> filter(age_cat == "10-19", outcome %in% c("Death", "Recover"))
+
+top_combo_10_19 <- combo_10_19 |>
+  filter(symptom_combo != "Other") |>
+  count(outcome, symptom_combo) |>
+  group_by(outcome) |>
+  mutate(pct = n / sum(n)) |>
+  slice_max(n, n = 1, with_ties = FALSE) |>
+  mutate(`Top Symptom Combo` = paste0(symptom_combo, " (", round(pct * 100, 1), "%)")) |>
+  select(outcome, `Top Symptom Combo`)
+
+summary_10_19 <- ebola_10_19 |>
+  group_by(outcome) |>
+  summarise(
+    `CT` = round(mean(ct_blood < 21, na.rm = TRUE) * 100, 1),
+    `Weight` = round(mean(weight_lb > 80, na.rm = TRUE) * 100, 1),
+    `Infection to Outcome` = paste0(median(days_infection_to_outcome, na.rm = TRUE),
+                                    " (", quantile(days_infection_to_outcome, 0.25, na.rm = TRUE),
+                                    "–", quantile(days_infection_to_outcome, 0.75, na.rm = TRUE), ")"
+                                    ),
+    `Onset to Outcome` = paste0(median(days_onset_to_outcome, na.rm = TRUE),
+                                " (", quantile(days_onset_to_outcome, 0.25, na.rm = TRUE),
+                                "–", quantile(days_onset_to_outcome, 0.75, na.rm = TRUE), ")"
+                                ),
+    `Hospitalisation to Outcome` = paste0(median(days_hospitalisation_to_outcome, na.rm = TRUE),
+                                          " (", quantile(days_hospitalisation_to_outcome, 0.25, na.rm = TRUE),
+                                          "–", quantile(days_hospitalisation_to_outcome, 0.75, na.rm = TRUE), ")"
+                                          ),
+    `Top Hospital` = name |> na.omit() |> fct_infreq() |> as.character() |> first(),
+    .groups = "drop"
+  )
+
+final_10_19 <- left_join(top_combo_10_19, summary_10_19, by = "outcome") |> mutate(age_group = "10-19")
+
+# ---- Combine and reshape ----
+combined <- bind_rows(final_0_9, final_10_19) |>
+  mutate(across(c(`CT`, `Weight`), as.character)) |> 
+  pivot_longer(cols = -c(outcome, age_group), names_to = "Feature", values_to = "Value") |>
+  unite("age_outcome", age_group, outcome) |>
+  pivot_wider(names_from = age_outcome, values_from = Value)
+
+
+# ---- Create GT Table ----
+gt(combined, rowname_col = "Feature") |>       
+  tab_spanner(label = "Age 0–9", columns = c(`0-9_Death`, `0-9_Recover`)) |>
+  tab_spanner(label = "Age 10–19", columns = c(`10-19_Death`, `10-19_Recover`)) |>
+  cols_label(
+    `0-9_Death` = "Death",
+    `0-9_Recover` = "Recover",
+    `10-19_Death` = "Death",
+    `10-19_Recover` = "Recover"
+  ) |>
+  fmt_markdown(columns = everything()) |>
+  tab_style(
+    style = list(
+      cell_text(weight = "bold"),
+      cell_borders(sides = "all", weight = px(4), color = "#DDDDDD")
+    ),
+    locations = cells_stub()
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#f0f4f8"),
+    locations = cells_body(columns = everything())
+  ) |>
+  tab_style(
+    style = list(cell_text(weight = "bold")),
+    locations = cells_column_spanners()
+  ) |>
+  tab_footnote(
+    footnote = "CT < 21 was the threshold and it indicates higher viral load across both age groups.",
+    locations = cells_stub(rows = "CT")
+  ) |>
+  tab_footnote(
+    footnote = "Weight thresholds: >80 lb for Age 0–9; >120 lb for Age 10–19. (Source: CDC, NCHS, 2024)",
+    locations = cells_stub(rows = "Weight")
+  ) |>
+  tab_footnote(
+    footnote = "Median (IQR) reported for timing intervals in days.",
+    locations = cells_stub(rows = c(
+      "Infection to Outcome",
+      "Onset to Outcome",
+      "Hospitalisation to Outcome"
+    ))
+  ) |>
+  opt_table_outline() |>
+  opt_row_striping() |>
+  opt_align_table_header(align = "left") |>
+  tab_options(
+    table.font.size = 18,
+    table.font.names = "Segoe UI, Arial",
+    table.width = pct(100),
+    data_row.padding = px(10),
+    heading.title.font.size = 24,
+    column_labels.font.size = 20,
+    table.border.top.width = px(4),
+    table.border.bottom.width = px(4)
+  )
+```
+
+
+----------------
+
+::: toc-bar
+<div>
+
+-Background<br> -Patient Demographics<br> -Clinical Milestones<br> -Symptoms<br> -Viral Load<br> -Multi Comparisons<br> [-Summary]{.active}<br>
+
+</div>
+
+::: toc-right
+Summary
+:::
+:::
+
+##### **What did we find?**
+
+:::: {.columns style="font-size: 1.5em;"}
+::: {.column width="100%"}
+
+- **Age matters:** Younger patients had more deaths; older adults showed higher recovery.  
+- **Symptoms signal severity:** Fever + Cough combos were common in fatal cases.  
+- **Weight $\neq$ Risk:** Heavier patients weren’t more likely to die after adjusting for age.  
+- **Faster deaths, slower recoveries:** Time-to-outcome was shortest for deaths across all age groups.  
+- **Hospitals adapted over time:** Port and Military hospitals showed stable care timelines.  
+
+<div style="text-align:center; font-size:4em; color:#002366; margin-top:1em;">
+  <strong>THANK YOU</strong>
+</div>
+
+:::
+::::
+
+
+
+
+
+

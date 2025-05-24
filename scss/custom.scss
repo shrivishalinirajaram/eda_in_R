@@ -1,0 +1,104 @@
+/*-- scss:defaults --*/
+$body-bg: #FFFFFF;
+$body-color: #222;
+$link-color: #D72638;
+$presentation-heading-color: #002366;
+$font-family-sans-serif: "Segoe UI", "Helvetica Neue", "Helvetica", "Arial", "sans-serif";
+$code-block-bg: #FFFFFF;
+
+
+/*-- scss:rules --*/
+/* Font and slide base */
+.reveal .slide {
+  padding-top: 0.2em; 
+  padding-bottom: 0.2em;
+}
+
+.reveal {
+  font-family: $font-family-sans-serif;
+  font-size: 18px;
+  color: $body-color;
+  background-color: $body-bg;
+}
+
+/* Headings */
+.reveal h1, .reveal h2, .reveal h3 {
+  color: $presentation-heading-color;
+  font-weight: 400;
+}
+
+
+/* Tables */
+.reveal table.gt_table {
+  font-size: 18px !important;
+  width: 100% !important;
+}
+.reveal .gt_header {
+  font-size: 20px !important;
+  font-weight: bold;
+  margin-bottom: 1em;
+}
+
+
+/* Slide number bottom-right */
+.reveal .slide-number {
+  right: 1em;
+  bottom: 0.5em;
+  position: fixed !important;
+  color: #666;
+  font-size: 16px;
+}
+
+/* Fixed left TOC sidebar */
+.toc-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background-color: #003366;
+  color: white;
+  padding: 0.2em 0.4em;
+  width: 100%;
+  font-size: 0.6em;
+  margin-top: -4.5em;
+  margin-bottom: 0.5em;
+  border-radius: 0.3em;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Highlighted section */
+.toc-bar .active {
+  color: #ffcc00;
+  font-weight: bold;
+}
+
+/* Right-aligned subheading */
+.toc-right {
+  font-weight: bold;
+  color: #ffcc00;
+  padding: 2em 1em 0.2em 1em;
+  width: 70%;
+  line-height: 1.4;
+  text-align: center;
+  font-size: 32px;
+}
+
+
+/* Research Question block */
+.research-question {
+  font-size: 1.5em;
+  font-weight: 700;
+  color: #111;
+  line-height: 1.4;
+  margin-top: 5em;
+  margin-bottom: 1em;
+  padding: 0.5em 1em;
+  background-color: #f8f8f8;
+  border-left: 5px solid #002366;
+  border-radius: 4px;
+}
+
+.reveal .footer {
+  font-size: 10px;
+  color: #666;
+  padding-top: 0.5em;
+}

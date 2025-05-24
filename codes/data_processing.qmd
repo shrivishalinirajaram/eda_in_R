@@ -1,0 +1,368 @@
+---
+title: "Data proprocessing"
+subtitle: "Ebola Outbreak Evaluation"
+author: "Shri Vishalini Rajaram"
+date: April 18, 2025
+format: 
+  html:
+    toc: true
+    toc-title: Project Milestones
+    embed-resources: true
+    editor: source
+    theme: litera
+    toc-depth: 5
+---
+
+```{r setup, echo=FALSE, include=FALSE}
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(lubridate)
+library(gt)
+library(forcats)
+library(viridis)
+library(scales)
+```
+
+
+
+## **Reading the files**
+
+```{r read_files}
+ebola_cases <- read_csv("data/ebola_cases.csv")
+ebola_hospitals <- read_csv("data/ebola_hospitals.csv")
+ebola_patients <- read_csv("data/ebola_patients.csv")
+```
+
+## **Taking a glimpse on the file**
+
+```{r glimpse}
+glimpse(ebola_cases)
+glimpse(ebola_patients)
+glimpse(ebola_hospitals)
+```
+
+## **Understanding the data structures and values**
+
+### **Exploring `ebola_cases`**
+
+```{r exploring ebola_cases}
+# `case_id` column
+sum(is.na(ebola_cases$case_id))
+
+# All the dates columns
+sum(is.na(ebola_cases$date_infection))
+sum(is.na(ebola_cases$date_onset))
+sum(is.na(ebola_cases$date_hospitalisation))
+sum(is.na(ebola_cases$date_outcome))
+ebola_cases |> 
+  summarise(
+    bad_date_infection = sum(!is.na(date_infection) & is.na(ymd(date_infection, quiet = TRUE))),
+    bad_date_onset = sum(!is.na(date_onset) & is.na(ymd(date_onset, quiet = TRUE))),
+    bad_date_hosp = sum(!is.na(date_hospitalisation) & is.na(ymd(date_hospitalisation, quiet = TRUE))),
+    bad_date_outcome = sum(!is.na(date_outcome) & is.na(ymd(date_outcome, quiet = TRUE)))
+  ) |> 
+  gt()
+
+# `outcome` column
+ebola_cases |> 
+  count(outcome)  |>
+  gt()
+
+# `hospid` column
+ebola_cases |> 
+  count(hospid)  |>
+  gt()
+```
+
+### **Exploring `ebola_patients`**
+
+```{r exploring ebola_patients}
+# `case_id` column
+sum(is.na(ebola_patients$case_id))
+
+# `gender` column
+ebola_patients |> 
+  count(gender) |> 
+  gt()
+
+# `age` column
+summary(ebola_patients$age)
+
+# `age_unit` column
+ebola_patients |> 
+  count(age_unit) |> 
+  gt()
+
+# `source` column
+ebola_patients |> 
+  count(source) |> 
+  gt()
+
+# `wt_kg` column
+summary(ebola_patients$wt_kg)
+
+# `ht_cm` column
+summary(ebola_patients$ht_cm)
+
+# `ct_blood` column
+summary(ebola_patients$ct_blood)
+
+# `symptoms` column
+ebola_patients |> 
+  count(symptoms) |> 
+  gt()
+
+# `temp` column
+summary(ebola_patients$temp)
+```
+
+
+### **Exploring `ebola_hospitals`**
+
+```{r exploring ebola_hospitals}
+# `hospid` column
+unique(ebola_hospitals$hospid)
+
+# `name` column
+unique(ebola_hospitals$name)
+```
+
+
+## **Data Description**
+
+### `ebola_cases`
+
+**Ebola Case-Level Information from 2014-2015 Outbreak**
+
+This dataset contains case-level data from the Ebola outbreak, including key dates (infection, onset, hospitalisation, outcome), clinical outcomes, and associated hospital identifiers. Each row represents one unique case.
+
+A data frame with 5,888 rows and 7 variables:
+
+- `case_id`: unique identifier for each Ebola case; *can be used to combine with `ebola_patients`*
+- `date_infection`: reported date of infection (character, YYYY-MM-DD format); *contains missing values*
+- `date_onset`: date of symptom onset (character, YYYY-MM-DD format); *contains missing values*
+- `date_hospitalisation`: date of hospital admission (character, YYYY-MM-DD format)
+- `date_outcome`: date when outcome (death or recovery) was recorded (character, YYYY-MM-DD format); *contains missing values*
+- `outcome`: clinical outcome of the case; values include `"Recover"`, `"Death"`, and `NA`; *Missing outcomes indicate unresolved or unreported cases. Cases without `outcome` information and missing values need to be handled.*
+- `hospid`: numeric hospital ID where the case was treated; *can be used to link to `ebola_hospitals`; Some values are missing, indicating the patient was not treated in a hospital or the facility was not recorded.*
+
+**Note:** Many date fields are missing, and some patients are not linked to any hospital.
+
+
+### `ebola_patients`
+
+**Patient-Level Clinical and Demographic Data from Ebola Outbreak**
+
+This dataset contains demographic and clinical information corresponding to each Ebola case. Includes age, gender, infection source, body measurements, symptoms, and diagnostic results.
+
+A data frame with 5,888 rows and 10 variables:
+
+- `case_id`: unique identifier for each Ebola case; *can be used to join with `ebola_cases`*
+- `gender`: reported gender; inconsistently coded as `"male"`, `"female"`, `"M"`, `"F"`, and `NA`; *contains improper coding of variables, need to maintain consistent coding and missing values need to be handled.*
+- `age`: numeric age of the patient; *contains missing age, age groups are skewed with 75% <= 23 and minimum age is 0*
+- `age_unit`: `"years"` or `"months"` indicating unit of the age value; *should be standardized to `years`*
+- `source`: likely source of infection; values include `"other"`, `"funeral"`, and `NA`; *contains missing values*
+- `wt_kg`: weight in kilograms; *includes unrealistic values such as -11 kg and 0 kg, suggesting input or entry errors*
+- `ht_cm`: height in centimeters; *includes extreme values such as 4 cm and 295 cm, which may be biologically implausible or entered incorrectly*
+- `ct_blood`: cycle threshold value from blood RT-PCR test; *distribution is mostly reasonable.*
+- `symptoms`: reported symptoms; stored as comma-separated strings (e.g., `"fever, cough"`); *some entries are missing.*
+- `temp`: body temperature in Celsius; values range from 35.2°C to 40.8°C, with missing entries; *some entries may be biologically unlikely (e.g., below 36°C or above 40°C in Ebola patients)*
+
+
+### `ebola_hospitals`
+
+**Hospital Reference Table**
+
+Reference dataset mapping hospital IDs to hospital names. Used to label hospitals in the case dataset.
+
+A data frame with 4 rows and 2 variables:
+
+- `hospid`: numeric ID of the hospital; *can be used to link with `ebola_cases`*
+- `name`: name of the hospital (*`"Port Hospital"`, `"Military Hospital"`, `"St. Mark's Maternity Hospital"`, `"King's Hospital"`*)
+
+
+## **Research Question**
+
+::: {.callout-important title="Research Question"}
+**Does the temporal changes of clinical milestones, symptom presentation, viral load, and patient demographics influence the clinical outcome of Ebola virus disease during the outbreak?**
+:::
+
+## **Rationale**
+
+::: {.callout-note title="Rationale"}
+Ebola virus disease (EVD) has a high fatality rate and can progress very differently between individuals. In this project, I aim to explore how factors such as the timing of symptom onset, hospitalisation, and outcome—along with patient symptoms, viral load (as measured by PCR cycle threshold), age, and gender—are related to whether a patient recovers or dies.
+
+I will use the dataset to create new variables, such as time between clinical events and symptom count, and categorize viral load into broad groups. These patterns will be compared between recovery, death,  and unknown and across different age and gender groups.
+
+The goal is to describe meaningful trends in disease progression. The analysis will combine data cleaning, transformation, and visualization to explore how different combinations of factors relate to patient outcomes in the Ebola outbreak.
+:::
+
+
+## **Data Tidying and Cleaning**
+
+#### **Join Datasets**
+
+```{r}
+# Join datasets
+ebola <- ebola_cases |>
+  left_join(ebola_patients, by = "case_id") |>
+  left_join(ebola_hospitals, by = "hospid")
+```
+
+##### **Exploring the combined data**
+
+```{r}
+dim(ebola)
+glimpse(ebola)
+```
+
+### **Tidying Data**
+
+```{r}
+ebola <- ebola |>
+  # Convert Dates
+  mutate(
+    date_onset = ymd(date_onset),
+    date_outcome = ymd(date_outcome),
+    date_hospitalisation = ymd(date_hospitalisation),
+    date_infection = ymd(date_infection)
+  ) |> 
+  # Convert Age unit and filtering Age
+  filter(!is.na(age) & !is.na(age_unit)) |>
+  mutate(
+    age_year = case_when(
+      age_unit == "years" ~ round(age, 2),
+      age_unit == "months" ~ round(age / 12, 2),
+      TRUE ~ NA_real_
+  )
+  ) |>
+  filter(age_year < 70) |> 
+  # Filter by hospitalisation date
+  filter(date_hospitalisation >= ymd("2014-05-01") & 
+           date_hospitalisation <= ymd("2015-04-30")) |> 
+  # Replace missing outcome with "Unknown"
+  mutate(outcome = if_else(is.na(outcome), "Unknown", outcome)) |> 
+  # Age categories
+  mutate(
+    age_cat = case_when(
+      age_year < 10 ~ "0-9",
+      age_year < 20 ~ "10-19",
+      age_year < 30 ~ "20-29",
+      age_year < 50 ~ "30-49",
+      age_year < 70 ~ "50-69"
+  )
+  ) |>
+  mutate(age_cat = factor(age_cat, 
+                          levels = c("0-9", "10-19", "20-29", "30-49", "50-69"))) |> 
+  # Fix gender
+  mutate(
+    gender_clean = str_to_lower(gender),
+    gender_clean = case_when(
+      gender_clean %in% c("f", "female") ~ "Female",
+      gender_clean %in% c("m", "male") ~ "Male",
+      TRUE ~ NA_character_
+    )
+  ) |> 
+  # Convert units
+  mutate(
+    weight_lb = if_else(!is.na(wt_kg), round(wt_kg * 2.20462, 1), NA_real_),
+    height_ft = if_else(!is.na(ht_cm), round(ht_cm / 30.48, 2), NA_real_),
+    temp_f = if_else(!is.na(temp), round((temp * 9/5) + 32, 1), NA_real_)
+  ) |> 
+  # Lowercase symptoms text
+  mutate(symptoms = str_to_lower(symptoms)) |> 
+  # Create indicator columns for 5 symptoms + "no symptoms"
+  mutate(
+    symptom_fever    = if_else(!is.na(symptoms) & 
+                                 str_detect(symptoms, "fever"), 1L, 0L),
+    symptom_cough    = if_else(!is.na(symptoms) & 
+                                 str_detect(symptoms, "cough"), 1L, 0L),
+    symptom_vomit    = if_else(!is.na(symptoms) & 
+                                 str_detect(symptoms, "vomit"), 1L, 0L),
+    symptom_chills = if_else(!is.na(symptoms) & 
+                                 str_detect(symptoms, "chills"), 1L, 0L),
+    symptom_aches = if_else(!is.na(symptoms) & 
+                                 str_detect(symptoms, "aches"), 1L, 0L),
+    symptom_none     = if_else(symptoms == "no symptoms", 1L, 0L)
+  ) |> 
+  mutate(
+    n_symptoms = symptom_fever + symptom_cough + symptom_vomit +
+                 symptom_chills + symptom_aches
+  ) |> 
+  # Months for time trend analysis
+  mutate(month_onset = floor_date(date_onset, unit = "month"),
+         month_infection = floor_date(date_infection, unit = "month"),
+         month_hospitalisation = floor_date(date_hospitalisation, unit = "month")) |> 
+  # Days between onset, infection, hospitalisation and outcome
+  mutate(
+    days_onset_to_outcome = as.numeric(date_outcome - date_onset),
+    days_infection_to_outcome = as.numeric(date_outcome - date_infection),
+    days_hospitalisation_to_outcome = as.numeric(date_outcome - date_hospitalisation)
+    )
+
+glimpse(ebola)
+```
+
+#### **New columns**
+
+```{r}
+ebola |> 
+  select(case_id, age_year, age_cat, gender_clean, weight_lb, height_ft, 
+         temp_f, n_symptoms, month_onset, month_infection, month_hospitalisation,
+         days_onset_to_outcome, days_infection_to_outcome, days_hospitalisation_to_outcome) |> 
+  head()
+```
+
+
+#### **Cleaned and Derived Variables**
+
+- `age_year`: numeric age in years; *standardized from `age` + `age_unit`, rounded to 2 decimals*
+- `age_cat`: categorical age groups: `"0-9"`, `"10-19"`, `"20-29"`, `"30-49"`, `"50-69"`; *helps stratify summaries*
+- `gender_clean`: cleaned version of `gender` with `"Male"`, `"Female"`, or `NA`; *standardized for clarity*
+- `weight_lb`: weight in pounds; *converted from `wt_kg`*
+- `height_ft`: height in feet; *converted from `ht_cm`*
+- `temp_f`: temperature in Fahrenheit; *converted from `temp`*
+- `symptom_fever`, `symptom_cough`, `symptom_vomit`, `symptom_chills`, `symptom_aches`: binary (0/1) indicators for reported symptoms; *created from `symptoms` using `str_detect()`*
+- `symptom_none`: indicator for explicitly stated `"no symptoms"`
+- `n_symptoms`: total number of symptoms reported (excluding "no symptoms"); *calculated by summing 0/1 indicators*
+- `days_onset_to_outcome`: numeric interval between onset and outcome in days; *useful for time-to-recovery/death summaries*
+- `days_infection_to_outcome`: numeric interval between start of infection and outcome in days; *useful for total infection time*
+- `days_hospitalisation_to_outcome`: numeric interval between hospitalisation and outcome in days; *useful for understanding severity*
+- `month_onset`, `month_infection`, `month_hospitalisation`: month variables of the patient dates; *useful to evaluate the trend*
+
+
+### **Is the Data Tidy?**
+
+Yes, the cleaned `ebola` dataset is in tidy format.
+
+According to the principles of tidy data:
+
+1. **Each variable forms a column**  
+   Each column in the dataset represents a single, meaningful variable. For example, demographic variables (`age_year`, `gender_clean`), clinical indicators (`temp_f`, `ct_blood`), symptoms (`symptom_fever`, `symptom_cough`, etc.), and time intervals (`days_onset_to_outcome`) are all stored in their own dedicated columns.
+
+2. **Each observation forms a row**  
+   Each row represents a single Ebola case, uniquely identified by `case_id`. All data about that case — including symptoms, outcome, age, and hospitalisation dates — are contained in that row.
+
+3. **Each type of observational unit forms a table**  
+   Initially, the information was split across three datasets: cases, patients, and hospitals. These were merged into a single table where each row is a unique patient case. No observational mixing remains.
+
+4. **Each cell contains one value**  
+   Multiple symptom labels originally stored as a string in the `symptoms` column have been extracted into separate binary indicator columns (e.g., `symptom_fever`, `symptom_vomit`). This transformation ensures each cell contains a single, interpretable value.
+
+5. **Missing values are clearly defined**  
+   All missing entries are encoded using `NA`, which ensures consistent handling in R.
+
+#### **Why the Dataset is Declared Tidy**
+
+The cleaned `ebola` dataset satisfies all the structural requirements for tidy data. It is now suitable for summarization, visualization, and further analysis without additional reshaping or transformation.
+
+#### **Why Some Original Variables Are Retained**
+
+While derived variables (e.g., `age_year`, `gender_clean`, `temp_f`) were created to improve consistency and clarity, I chose to retain original variables such as:
+
+- `age` and `age_unit` (to show raw inputs used for `age_year`)
+- `wt_kg`, `ht_cm`, `temp` (to preserve metric units alongside the imperial conversions)
+- `symptoms` (as a human-readable reference in text form)
+
+These original variables provide useful context, support reproducibility, and enable verification if needed. Their presence does not interfere with the tidy structure because they still conform to the one-variable-per-column principle.
