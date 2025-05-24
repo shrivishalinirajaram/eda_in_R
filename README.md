@@ -101,7 +101,7 @@ ebola_eda_project/
    install.packages(c("tidyverse", "gt", "lubridate", "stringr", "quarto"))
    ```
 4. Render the documents:
-   Run and knit `codes/data_processing.qmd`
-   Run and knit `codes/presentation.qmd`
+   - Run and knit `codes/data_processing.qmd`
+   - Run and knit `codes/presentation.qmd`
 
 ---
